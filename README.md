@@ -1,4 +1,5 @@
 # editor
+<h1> DO NOT COMPILE, MEMORY LEAKS!!</h1>
 <br>This is a small project created with goal of learning project making and the language C.
 <br>Its a minimal text editor that works on terminal.
 <br>
