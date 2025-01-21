@@ -38,7 +38,7 @@ int main(int argc, string argv[]){
     }
     string file_name = argv[1];
     FILE* file;
-    // opening file for
+    // opening file for reading
     file = fopen(file_name,"r");
     if (file == NULL){
         // load empty buffer
@@ -75,13 +75,13 @@ int main(int argc, string argv[]){
         exit_message = "Error: Problem occured during saving to file: %s\nFile might be unchanged\n";
         return error(exit_message, return_value);
     }
-    printf("file: %s is updated.\n", file_name);
     fclose(file);
     return_value = free_buffer(buffer);
     if (return_value != 0){
         exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
         return error(exit_message,return_value);
     }
+    printf("file: %s is updated.\n", file_name);
     return 0;
 }
 
@@ -167,9 +167,7 @@ void remove_last_node(node** head){
     free(current->next->line);
     free(current->next);
     current->next = NULL;
-}
-    
-
+}    
 
 void display_buffer(node* head){
     node* current = head;
