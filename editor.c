@@ -19,12 +19,18 @@ typedef struct node{
 // Function declaration (sequentially)
 int error(string message,int exit_status);
 node* create_node();
+FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
+void remove_last_node(node** head);
 void display_buffer(node* head);
+int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
 
 // main
 int main(int argc, string argv[]){
+    int return_value;
+    string exit_message;
+    node* buffer;
     // taking file_name
     if (argc != 2){
         string exit_message = "Error: Wrong command\n Command should be in format: './editor test.txt'\n";
@@ -36,28 +42,43 @@ int main(int argc, string argv[]){
     file = fopen(file_name,"r");
     if (file == NULL){
         // load empty buffer
+        free(file);
+        file = create_empty_file(file_name);
+    }
+    // laod file content to buffer
+    buffer = create_node();
+    if (buffer == NULL){
+        return_value = 1;
     }
     else{
-        // laod file content to buffer
-        node* buffer = create_node()
-        int return_value = load_to_buffer(file, buffer);
-        if (return_value != 0){
-            string exit_message = "Error: Problem occured during buffer-loading.\nPlease try again later.\n";
-            return error(exit_message,return_value);
-        }
-        fclose(file);
+        return_value = load_to_buffer(file, buffer);
     }
+    if (return_value != 0){
+        exit_message = "Error: Problem occured during buffer-loading.\nPlease try again later.\n";
+        return error(exit_message,return_value);
+    }
+    fclose(file);
     
     display_buffer(buffer);
 
     // write to file
     file = fopen(file_name,"w");
-    // write updated buffer to file
-    printf("Writing file: %s\n", file_name);
-    fclose(file);
-    int return_value = free_buffer(buffer);
+    if (file == NULL){
+        return_value = 404;
+    }
+    else{
+        // write updated buffer to file
+        return_value = update_to_file(file, buffer);
+    }
     if (return_value != 0){
-        string exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
+        exit_message = "Error: Problem occured during saving to file: %s\nFile might be unchanged\n";
+        return error(exit_message, return_value);
+    }
+    printf("file: %s is updated.\n", file_name);
+    fclose(file);
+    return_value = free_buffer(buffer);
+    if (return_value != 0){
+        exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
         return error(exit_message,return_value);
     }
     return 0;
@@ -75,22 +96,78 @@ node* create_node(){
     return Node;
 }
 
-//TODO the following function s terribly implemented and needs fixes, am keaving this for when I am not sleepy and half-brain-dead
-int load_to_buffer(FILE* f,node* head){
-    char c = fgetc(f);
-    node* current = head;
-    if(c == EOF){
-        return 0;
-    }
-    if(c == '\n'){
-        strcat(current->line,'\0');
-        current->next = create_node();
-        head = current->next;
-    }else{
-        strcat(current->line,&c);
-    }
-    return load_to_buffer(current,head);
+FILE* create_empty_file(string name){
+    FILE* file = fopen(name, "w");
+    fclose(file);
+    file = fopen(name, "r");
+    return file;
 }
+
+int load_to_buffer(FILE* f,node* head){
+    int c;
+    node* current = head;
+    int line_length = 0;
+    size_t line_size;
+    line_size = 1024;
+    while((c = fgetc(f)) != EOF){
+        // for new line
+        if (current->line == NULL){
+            current->line = (string)malloc(line_size);
+            if(current->line == NULL){
+                return 1;
+            }
+            current->line[0] = '\0';
+        }
+        // for older line increasing line buffer size if content doesnt fit-in
+        else if(line_length +1 >= line_size){
+            line_size *= 2;            
+            current->line = (string)realloc(current->line, line_size);
+            if(current->line == NULL){
+                return 1;//error
+            }
+        }
+        if(c == '\n'){
+            // create new node for new line
+            current->next = create_node();
+            if(current->next == NULL){
+                return 1;
+            }
+            current = current->next;
+            line_length = 0;
+            line_size = 1024;
+        }
+        else{
+            // for old line append every character of that line
+            current->line[line_length] =(char) c;
+            line_length++;
+            current->line[line_length] = '\0'; //null termination for no error during string handeling
+        }
+    }
+    if (current->line == NULL)
+        remove_last_node(&head);//Null node removal
+    return 0;//no error
+}
+
+void remove_last_node(node** head){
+    if(*head == NULL){
+        return;
+    }
+    node *current = *head;
+    if(current->next == NULL){
+        free(current->line);
+        free(current);
+        *head = NULL;
+        return;
+    }
+    while(current->next->next != NULL){
+        current = current->next;
+    }
+    free(current->next->line);
+    free(current->next);
+    current->next = NULL;
+}
+    
+
 
 void display_buffer(node* head){
     node* current = head;
@@ -98,6 +175,18 @@ void display_buffer(node* head){
         printf("%d\t%s \n",i, current->line);
         current = current->next;
     }
+}
+
+int update_to_file(FILE* f, node* head){
+    node* current = head;
+    if(f == NULL || current == NULL){
+        return 1;
+    }
+    while(current != NULL){
+        fprintf(f,"%s\n",current->line);
+        current = current->next;
+    }
+    return 0;
 }
 
 int free_buffer(node* head) {
