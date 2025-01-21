@@ -22,13 +22,13 @@ node* create_node();
 FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
 void remove_last_node(node** head);
-void display_buffer(node* head);
+int display_buffer(node* head);
 int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
 
 // main
 int main(int argc, string argv[]){
-    int return_value;
+    int return_value, list_length;
     string exit_message;
     node* buffer;
     // taking file_name
@@ -60,7 +60,7 @@ int main(int argc, string argv[]){
     }
     fclose(file);
     
-    display_buffer(buffer);
+    list_length = display_buffer(buffer);
 
     // write to file
     file = fopen(file_name,"w");
@@ -169,12 +169,14 @@ void remove_last_node(node** head){
     current->next = NULL;
 }    
 
-void display_buffer(node* head){
+int display_buffer(node* head){
     node* current = head;
-    for(int i = 1;current != NULL;i++){
-        printf("%d\t%s \n",i, current->line);
+    int length;
+    for(length = 0;current != NULL;length++){
+        printf("%d\t%s \n",length+1, current->line);
         current = current->next;
     }
+    return length;
 }
 
 int update_to_file(FILE* f, node* head){
