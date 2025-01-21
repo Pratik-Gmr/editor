@@ -44,6 +44,7 @@ int main(int argc, string argv[]){
         // load empty buffer
         free(file);
         file = create_empty_file(file_name);
+        printf("New file created.\n");
     }
     // laod file content to buffer
     buffer = create_node();
@@ -98,6 +99,7 @@ node* create_node(){
 
 FILE* create_empty_file(string name){
     FILE* file = fopen(name, "w");
+    fprintf(file," \n");
     fclose(file);
     file = fopen(name, "r");
     return file;
