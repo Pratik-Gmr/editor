@@ -9,9 +9,9 @@
 
 // defining new data types, global variables, new structures
 typedef char* string;
-typedef char bool;
 typedef struct node{
     string line;
+    struct node* prev;
     struct node* next;
 } node;
 
@@ -21,7 +21,6 @@ int error(string message,int exit_status);
 node* create_node();
 FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
-void remove_last_node(node** head);
 int display_buffer(node* head);
 int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
@@ -61,7 +60,7 @@ int main(int argc, string argv[]){
     fclose(file);
     
     list_length = display_buffer(buffer);
-
+    
     // write to file
     file = fopen(file_name,"w");
     if (file == NULL){
@@ -93,6 +92,8 @@ int error(string message, int exit_status){
 
 node* create_node(){
     node* Node = (node*)malloc(sizeof(node));
+    Node->line = NULL;
+    Node->prev = NULL;
     Node->next = NULL;
     return Node;
 }
@@ -109,8 +110,7 @@ int load_to_buffer(FILE* f,node* head){
     int c;
     node* current = head;
     int line_length = 0;
-    size_t line_size;
-    line_size = 1024;
+    size_t line_size = 1;
     while((c = fgetc(f)) != EOF){
         // for new line
         if (current->line == NULL){
@@ -122,7 +122,7 @@ int load_to_buffer(FILE* f,node* head){
         }
         // for older line increasing line buffer size if content doesnt fit-in
         else if(line_length +1 >= line_size){
-            line_size *= 2;            
+            line_size += 1;            
             current->line = (string)realloc(current->line, line_size);
             if(current->line == NULL){
                 return 1;//error
@@ -130,13 +130,15 @@ int load_to_buffer(FILE* f,node* head){
         }
         if(c == '\n'){
             // create new node for new line
-            current->next = create_node();
-            if(current->next == NULL){
+            node* new_node = create_node();
+            if(new_node == NULL){
                 return 1;
             }
+            current->next = new_node;
+            new_node->prev = current;
             current = current->next;
             line_length = 0;
-            line_size = 1024;
+            line_size = 1;
         }
         else{
             // for old line append every character of that line
@@ -145,35 +147,21 @@ int load_to_buffer(FILE* f,node* head){
             current->line[line_length] = '\0'; //null termination for no error during string handeling
         }
     }
+    //Removing last empty node if created
     if (current->line == NULL)
-        remove_last_node(&head);//Null node removal
-    return 0;//no error
-}
-
-void remove_last_node(node** head){
-    if(*head == NULL){
-        return;
-    }
-    node *current = *head;
-    if(current->next == NULL){
         free(current->line);
-        free(current);
-        *head = NULL;
-        return;
-    }
-    while(current->next->next != NULL){
-        current = current->next;
-    }
-    free(current->next->line);
-    free(current->next);
-    current->next = NULL;
-}    
+        current = current->prev;
+        free(current->next);
+        current->next = NULL;
+    return 0;//no error
+}   
 
 int display_buffer(node* head){
+    system("clear");
     node* current = head;
     int length;
     for(length = 0;current != NULL;length++){
-        printf("%d\t%s \n",length+1, current->line);
+        printf("%d  %s \n",length+1, current->line);
         current = current->next;
     }
     return length;
