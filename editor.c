@@ -202,7 +202,7 @@ int display_buffer(node* head){
     node* current = head;
     int length;
     for(length = 0;current != NULL;length++){
-        printf("%d  %s \n",length+1, current->line);
+        printf("%d\t%s \n",length+1, current->line);
         current = current->next;
     }
     return length;
