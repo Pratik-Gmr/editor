@@ -2,6 +2,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
+#include <unistd.h>
+
+// Function to mimic getch() kept on top cause I have habit of taking it as library function
+char getch() {
+    struct termios oldt, newt;
+    char ch;
+    tcgetattr(STDIN_FILENO, &oldt); // Get current terminal attributes
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt); // Apply new settings
+    ch = getchar(); // Read a single character
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // Restore old settings
+    return ch;
+}
+
 
 // Define macros
 #define True 1
@@ -73,6 +89,7 @@ int main(int argc, string argv[]){
         }
         else if(line_no > list_length +1){
             printf("line %d doesnt exist\n",line_no);
+            getch();
             continue;
         }
         printf("What change?\n");
