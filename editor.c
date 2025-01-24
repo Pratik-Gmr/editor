@@ -22,6 +22,8 @@ node* create_node();
 FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
 int display_buffer(node* head);
+int update_buffer(node* head,int line_no,string line);
+node* go_to(node* head,int line_no);
 int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
 
@@ -58,9 +60,31 @@ int main(int argc, string argv[]){
         return error(exit_message,return_value);
     }
     fclose(file);
-    
-    list_length = display_buffer(buffer);
-    
+    string new_line = (string)malloc(1024);
+    while(True){
+        unsigned int line_no;
+        list_length = display_buffer(buffer);
+        printf("Which line you wish to change?\n");
+        scanf(" %u", &line_no);
+        // Clear the input buffer after using scanf
+        while (getchar() != '\n'); 
+        if (line_no == 0){
+            break;
+        }
+        else if(line_no > list_length +1){
+            printf("line %d doesnt exist\n",line_no);
+            continue;
+        }
+        printf("What change?\n");
+        fgets(new_line, 1024, stdin);//because scanf just breaks and gets is unreliable
+        new_line[strcspn(new_line, "\n")] = '\0';//removing trailing new line
+        return_value = update_buffer(buffer,line_no,new_line);
+        if(return_value != 0){
+            exit_message = "Error:\n";
+            return error(exit_message,return_value);
+        }
+    }
+    free(new_line);
     // write to file
     file = fopen(file_name,"w");
     if (file == NULL){
@@ -165,6 +189,30 @@ int display_buffer(node* head){
         current = current->next;
     }
     return length;
+}
+
+int update_buffer(node* head,int line_no,string line){
+    node* current = go_to(head, line_no);
+    printf("Puginggg1\n");
+    current->line = (string)realloc(current->line,strlen(line)*sizeof(char)+1);
+    if(current->line == NULL){
+        return 1;
+    }
+    printf("Puginggg1\n");
+    strcpy(current->line,line);
+    printf("Puginggg1\n");
+    return 0;
+}
+
+node* go_to(node* head, int line_no){
+    node* current = head;
+    for(int i = 1; i < line_no; i++){
+        if(current->next == NULL && i == line_no-1){
+            current->next = create_node();
+        }
+        current = current->next;
+    }
+    return current;
 }
 
 int update_to_file(FILE* f, node* head){
