@@ -5,7 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-// Function to mimic getch() kept on top cause I have habit of taking it as library function
+// Function to mimic getch() kept on top cause I have habit of taking getch as library function
 char getch() {
     struct termios oldt, newt;
     char ch;
@@ -76,7 +76,7 @@ int main(int argc, string argv[]){
         return error(exit_message,return_value);
     }
     fclose(file);
-    string new_line = (string)malloc(1024);
+    string new_line = (string)malloc(4096);
     while(True){
         unsigned int line_no;
         list_length = display_buffer(buffer);
