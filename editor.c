@@ -210,14 +210,11 @@ int display_buffer(node* head){
 
 int update_buffer(node* head,int line_no,string line){
     node* current = go_to(head, line_no);
-    printf("Puginggg1\n");
     current->line = (string)realloc(current->line,strlen(line)*sizeof(char)+1);
     if(current->line == NULL){
         return 1;
     }
-    printf("Puginggg1\n");
     strcpy(current->line,line);
-    printf("Puginggg1\n");
     return 0;
 }
 
