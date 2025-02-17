@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
+#include <signal.h>
 #include <unistd.h>
 
 // Function to mimic getch() kept on top cause I have habit of taking getch as library function
@@ -30,6 +31,10 @@ typedef struct node{
     struct node* prev;
     struct node* next;
 } node;
+typedef struct cursor{
+    int row;
+    int column;
+} cursor;
 
 
 // Function declaration (sequentially)
@@ -37,11 +42,21 @@ int error(string message,int exit_status);
 node* create_node();
 FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
+int editor(node* buffer);
+void signal_handler(int signum);
 int display_buffer(node* head);
-int update_buffer(node* head,int line_no,string line);
+int update_buffer(node* head,char new_char);//need to write new logic
 node* go_to(node* head,int line_no);
 int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
+
+// global variables
+static int Exit = False;
+// cursor defination
+static cursor CURSOR = {0,0};
+static char C = '|';
+
+
 
 // main
 int main(int argc, string argv[]){
@@ -77,31 +92,9 @@ int main(int argc, string argv[]){
     }
     fclose(file);
     string new_line = (string)malloc(4096);
-    while(True){
-        unsigned int line_no;
-        list_length = display_buffer(buffer);
-        printf("Which line you wish to change?\n");
-        scanf(" %u", &line_no);
-        // Clear the input buffer after using scanf
-        while (getchar() != '\n'); 
-        if (line_no == 0){
-            break;
-        }
-        else if(line_no > list_length +1){
-            printf("line %d doesnt exist\n",line_no);
-            getch();
-            continue;
-        }
-        printf("What change?\n");
-        fgets(new_line, 1024, stdin);//because scanf just breaks and gets is unreliable
-        new_line[strcspn(new_line, "\n")] = '\0';//removing trailing new line
-        return_value = update_buffer(buffer,line_no,new_line);
-        if(return_value != 0){
-            exit_message = "Error:\n";
-            return error(exit_message,return_value);
-        }
-    }
-    free(new_line);
+
+    editor(buffer); // return is yet not handeled
+
     // write to file
     file = fopen(file_name,"w");
     if (file == NULL){
@@ -195,26 +188,104 @@ int load_to_buffer(FILE* f,node* head){
         free(current->next);
         current->next = NULL;
     return 0;//no error
-}   
+}
+
+void signal_handler(int signum){
+    system("clear");
+    printf(".....Exiting and saving changes......\nPress any key to confirm.\n");
+    fflush(stdout);
+    Exit = True;
+}
+
+int editor(node* buffer){
+    node* current = buffer;
+    int list_length;
+    // display ko logic/ programme
+    signal(SIGINT, signal_handler);
+    while(!Exit){
+        char new_char;
+        list_length = display_buffer(buffer);
+        printf("Use arrow keys to navigate, Ctrl+C to quit by saving into file.\n");
+        // to take char and handle it
+        new_char = getch();
+        if (new_char == '\033') { // Escape sequence for arrow keys or Esc
+            char next = getch();
+            if (next == '[') { // Arrow keys
+                switch (getch()) {
+                    case 'A': // Up
+                        if (current->prev != NULL) {
+                            current = current->prev;
+                            CURSOR.row--;
+                        }
+                        break;
+                    case 'B': // Down
+                        if (current->next != NULL) {
+                            current = current->next;
+                            CURSOR.row++;
+                        }
+                        break;
+                    case 'C'://Right
+                        if(strlen(current->line) != CURSOR.column){
+                            CURSOR.column++;
+                        }
+                        break;
+                    case 'D'://Left
+                        if(0 != CURSOR.column){
+                            CURSOR.column--;
+                        }
+                        break;
+                }
+            }
+            else if(Exit) break;
+            else{
+                continue;
+            }
+        }
+        else{
+            int return_value = update_buffer(buffer,new_char);
+            if(return_value != 0){
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
 
 int display_buffer(node* head){
     system("clear");
     node* current = head;
     int length;
+    char current_char;
     for(length = 0;current != NULL;length++){
-        printf("%d\t%s \n",length+1, current->line);
+        if (CURSOR.row == length){
+            printf("%d\t",length+1);
+            for(int i = 0;*(current->line+i) != '\0';i++){
+                if(CURSOR.column == i)
+                    current_char = C;
+                else
+                    current_char = *(current->line+i);
+                printf("%c",current_char);
+            }
+            if(CURSOR.column == strlen(current->line))
+                printf("%c",C);
+            printf("\n");
+        }
+        else 
+            printf("%d\t%s \n",length+1, current->line);
         current = current->next;
     }
     return length;
 }
 
-int update_buffer(node* head,int line_no,string line){
-    node* current = go_to(head, line_no);
-    current->line = (string)realloc(current->line,strlen(line)*sizeof(char)+1);
-    if(current->line == NULL){
-        return 1;
+int update_buffer(node* head,char new_char){
+    node* current = go_to(head, CURSOR.row+1);
+    int len;
+    if(CURSOR.column == (len = strlen(current->line))){
+        current->line = (string)realloc(current->line,len*sizeof(char)+1);
+        *(current->line + len+1) = '\0';
     }
-    strcpy(current->line,line);
+    else
+        *(current->line + CURSOR.column) = new_char;
     return 0;
 }
 
