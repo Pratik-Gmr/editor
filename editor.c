@@ -43,6 +43,8 @@ node* create_node();
 FILE* create_empty_file(string name);
 int load_to_buffer(FILE* f, node* head);
 int editor(node* buffer);
+int delete(node* current);
+int backspace(node* current);
 void signal_handler(int signum);
 int display_buffer(node* head);
 int update_buffer(node* head,char new_char);//need to write new logic
@@ -55,7 +57,6 @@ static int Exit = False;
 // cursor defination
 static cursor CURSOR = {0,0};
 static char C = '|';
-
 
 
 // main
@@ -182,11 +183,12 @@ int load_to_buffer(FILE* f,node* head){
         }
     }
     //Removing last empty node if created
-    if (current->line == NULL)
+    if (current->line == NULL){
         free(current->line);
         current = current->prev;
         free(current->next);
         current->next = NULL;
+    }
     return 0;//no error
 }
 
@@ -204,9 +206,10 @@ int editor(node* buffer){
     // display ko logic/ programme
     signal(SIGINT, signal_handler);
     while(!Exit){
+        current = go_to(buffer,CURSOR.row + 1);
         char new_char;
         list_length = display_buffer(buffer);
-        printf("Use arrow keys to navigate, Ctrl+C to quit by saving into file.\n");
+        printf("Use arrow keys to navigate, Ctrl+C to quit by saving into file, Ctrl+Z to quit without saving.\n");
         // to take char and handle it
         new_char = getch();
         if (new_char == '\033') { // Escape sequence for arrow keys or Esc
@@ -229,19 +232,48 @@ int editor(node* buffer){
                         if(strlen(current->line) != CURSOR.column){
                             CURSOR.column++;
                         }
+                        else if (current->next != NULL){
+                            current = current->next;
+                            CURSOR.row++;
+                            CURSOR.column = 0;
+                        }
                         break;
                     case 'D'://Left
                         if(0 != CURSOR.column){
-                            if (len = (strlen(current->line)) < CURSOR.column)
+                            if ((len = (strlen(current->line))) < CURSOR.column)
                                 CURSOR.column = len;
                             CURSOR.column--;
+                        }else {
+                            if(CURSOR.row !=0){
+                                current = current->prev;
+                                CURSOR.row--;
+                                if (current->line != NULL) {
+                                    CURSOR.column = strlen(current->line);
+                                } else {
+                                    CURSOR.column = 0;
+                                }
+                            }
+                        }
+                        break;
+                        case '3': //delete key
+                        if (getch() == '~') {
+                            int return_value = delete(current);
+                            if (return_value != 0) {
+                                return 1;
+                            }
                         }
                         break;
                 }
             }
-            else if(Exit) break;
             else{
                 continue;
+            }
+        }
+        else if(Exit) break;//to exit and save file on ctrl+C
+        else if(new_char == 127){ //backspace key
+            int return_value = backspace(current);
+            if(return_value != 0){
+                return 1;
             }
         }
         else{
@@ -254,14 +286,81 @@ int editor(node* buffer){
     return 0;
 }
 
+int delete(node* current){
+    if(strlen(current->line) > CURSOR.column){
+        int len = strlen(current->line);
+        for(int i = CURSOR.column; i < len; i++){
+            *(current->line + i) = *(current->line + i + 1);
+        }
+        current->line = (string)realloc(current->line,len);
+        if(current->line == NULL){
+            return 1;
+        }
+    }
+    else {
+        if (current->next != NULL){
+            current = current->next;
+            CURSOR.row++;
+            CURSOR.column = 0;
+            int return_value = backspace(current);
+            if(return_value != 0){
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int backspace(node* current){
+    if(CURSOR.row != 0 && CURSOR.column !=0){
+        if(CURSOR.column!=0){
+            CURSOR.column--;
+            int return_value = delete(current);
+            if(return_value != 0){
+                return 1;
+            }
+        }
+        else{ 
+            //deleting newline character
+            int len_prev = strlen(current->prev->line);
+            int len_curr = strlen(current->line);
+            current->prev->line = (string)realloc(current->prev->line,len_prev + len_curr + 1);
+            if(current->prev->line == NULL){
+                return 1;
+            }
+
+            strcat(current->prev->line,current->line); //merge 2 lines
+
+            if (current->prev != NULL) { //disconnect later line from others
+                current->prev->next = current->next;
+            }
+            if (current->next != NULL) {
+                current->next->prev = current->prev;
+            }
+            
+            node* old = current;
+            current = current->prev;  // Move cursor to previous line
+            CURSOR.row--;
+            CURSOR.column = len_prev + 1;
+
+            free(old->line); //free and remove later line
+            old->line = NULL;
+            old->next = NULL;
+            old->prev = NULL;
+            free(old);   
+        }
+    } 
+    return 0;
+}
+
 int display_buffer(node* head){
     system("clear");
     node* current = head;
     int length;
     char current_char;
     for(length = 0;current != NULL;length++){
+        printf("%d\t",length+1);
         if (CURSOR.row == length){
-            printf("%d\t",length+1);
             for(int i = 0;*(current->line+i) != '\0';i++){
                 if(CURSOR.column == i)
                     current_char = C;
@@ -269,12 +368,12 @@ int display_buffer(node* head){
                     current_char = *(current->line+i);
                 printf("%c",current_char);
             }
-            if(CURSOR.column >= strlen(current->line))
+            if(CURSOR.column >= strlen(current->line))//cursor at the end of line
                 printf("%c",C);
             printf("\n");
         }
         else 
-            printf("%d\t%s \n",length+1, current->line);
+            printf("%s\n", current->line);
         current = current->next;
     }
     return length;
@@ -284,11 +383,51 @@ int update_buffer(node* head,char new_char){
     node* current = go_to(head, CURSOR.row+1);
     int len;
     if(CURSOR.column == (len = strlen(current->line))){
-        current->line = (string)realloc(current->line,len*sizeof(char)+1);
+        current->line = (string)realloc(current->line,(len+2)*sizeof(char));
+        if(current->line == NULL){
+            return 1;
+        }
         *(current->line + len+1) = '\0';
     }
     *(current->line + CURSOR.column) = new_char;
     CURSOR.column++;
+    if(new_char == '\n'){
+        int i;
+        node* new = create_node();
+        if(new == NULL){
+            return 1;
+        }
+        new->line = (string)malloc(1);
+        new->line[0] = '\0';
+        if(new->line == NULL)
+            return 1;
+        int found_newline = False;
+        int len = strlen(current->line);
+        for(i = 0;i <= len; i++){
+            if(*(current->line+i) == '\n'){
+                found_newline = i+1;
+                *(current->line+i) = '\0';
+            }
+            else if(found_newline){
+                new->line = (string)realloc(new->line,strlen(new->line)+1);
+                *(new->line+i-found_newline) = *(current->line+i);
+                if(new->line == NULL){
+                    return 1;
+                }
+            }
+        }
+        string temp = (string)realloc(current->line, strlen(current->line) + 1);
+        if (temp == NULL) {
+            return 1;
+        }
+        current->line = temp;
+        
+        new->next = current->next;
+        new->prev = current;
+        if(current->next != NULL)
+            current->next->prev = new;
+        current->next = new;
+    }
     return 0;
 }
 
