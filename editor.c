@@ -200,6 +200,7 @@ void signal_handler(int signum){
 int editor(node* buffer){
     node* current = buffer;
     int list_length;
+    int len;
     // display ko logic/ programme
     signal(SIGINT, signal_handler);
     while(!Exit){
@@ -231,6 +232,8 @@ int editor(node* buffer){
                         break;
                     case 'D'://Left
                         if(0 != CURSOR.column){
+                            if (len = (strlen(current->line)) < CURSOR.column)
+                                CURSOR.column = len;
                             CURSOR.column--;
                         }
                         break;
@@ -266,7 +269,7 @@ int display_buffer(node* head){
                     current_char = *(current->line+i);
                 printf("%c",current_char);
             }
-            if(CURSOR.column == strlen(current->line))
+            if(CURSOR.column >= strlen(current->line))
                 printf("%c",C);
             printf("\n");
         }
@@ -284,8 +287,8 @@ int update_buffer(node* head,char new_char){
         current->line = (string)realloc(current->line,len*sizeof(char)+1);
         *(current->line + len+1) = '\0';
     }
-    else
-        *(current->line + CURSOR.column) = new_char;
+    *(current->line + CURSOR.column) = new_char;
+    CURSOR.column++;
     return 0;
 }
 
