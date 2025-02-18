@@ -1,5 +1,5 @@
 # editor
-<h1> DO NOT COMPILE, MEMORY LEAKS!!</h1>
+<h1> Compile,try and report if any bugs found!!</h1>
 <br>This is a small project created with goal of learning project making and the language C.
 <br>Its a minimal text editor that works on terminal.
 <br>
@@ -9,6 +9,6 @@
 <br>    i.e. : "./editor test.txt"
 <br>Display the file content. (create new file if does not exit)
 <br>A movable cursor to edit the txt to the position you want to.
-<br>Auto saves the changes
+<br>Save the changes into the file.
 <br>
-<br>This is the start for it and let us see where we reach.
+<br>Finally completed.
