@@ -19,7 +19,6 @@ char getch() {
     return ch;
 }
 
-
 // Define macros
 #define True 1
 #define False 0
@@ -56,8 +55,9 @@ int free_buffer(node* head);
 static int Exit = False;
 // cursor defination
 static cursor CURSOR = {0,0};
-static char C = '|';
-
+void print_cursor(char c){
+    printf("\x1b[7m%c\x1b[0m",c);
+}
 
 // main
 int main(int argc, string argv[]){
@@ -357,19 +357,17 @@ int display_buffer(node* head){
     system("clear");//new screen
     node* current = head;
     int length;
-    char current_char;
     for(length = 0;current != NULL;length++){
         printf("%d\t",length+1);
         if (CURSOR.row == length){//add cursor character at cursor position
             for(int i = 0;*(current->line+i) != '\0';i++){//cursor within the line
                 if(CURSOR.column == i)
-                    current_char = C;
+                    print_cursor(*(current->line+i));
                 else
-                    current_char = *(current->line+i);
-                printf("%c",current_char);
+                    printf("%c",*(current->line+i));
             }
             if(CURSOR.column >= strlen(current->line))//cursor at the end of line(to add characters at end of line)
-                printf("%c",C);
+                print_cursor(' ');
             printf("\n");
         }
         else //print the line without cursor
