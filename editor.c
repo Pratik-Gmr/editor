@@ -46,7 +46,7 @@ int delete(node* current);
 int backspace(node* current);
 void signal_handler(int signum);
 int display_buffer(node* head);
-int update_buffer(node* head,char new_char);//need to write new logic
+int update_buffer(node* head,char new_char);
 node* go_to(node* head,int line_no);
 int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
@@ -61,6 +61,7 @@ void print_cursor(char c){
 
 // main
 int main(int argc, string argv[]){
+    system("clear");
     int return_value, list_length;
     string exit_message;
     node* buffer;
@@ -92,9 +93,12 @@ int main(int argc, string argv[]){
         return error(exit_message,return_value);
     }
     fclose(file);
-    string new_line = (string)malloc(4096);
 
-    editor(buffer); // return is yet not handeled
+    return_value = editor(buffer);
+    if(return_value != 0){
+        exit_message = "Error: The progran has been aborted\n";
+        return error(exit_message,return_value);
+    }
 
     // write to file
     file = fopen(file_name,"w");
@@ -106,10 +110,11 @@ int main(int argc, string argv[]){
         return_value = update_to_file(file, buffer);
     }
     if (return_value != 0){
-        exit_message = "Error: Problem occured during saving to file: %s\nFile might be unchanged\n";
+        exit_message = "Error: Problem occured during saving to file\nFile might be unchanged\n";
         return error(exit_message, return_value);
     }
     fclose(file);
+
     return_value = free_buffer(buffer);
     if (return_value != 0){
         exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
@@ -127,9 +132,11 @@ int error(string message, int exit_status){
 
 node* create_node(){
     node* Node = (node*)malloc(sizeof(node));
-    Node->line = NULL;
-    Node->prev = NULL;
-    Node->next = NULL;
+    if(Node != NULL){
+        Node->line = NULL;
+        Node->prev = NULL;
+        Node->next = NULL;
+    }
     return Node;
 }
 
@@ -148,7 +155,7 @@ int load_to_buffer(FILE* f,node* head){
     size_t line_size = 1;
     while((c = fgetc(f)) != EOF){
         // for new line
-        if (current->line == NULL){
+        if (current->line == NULL){ //initialize the new line if empty
             current->line = (string)malloc(line_size);
             if(current->line == NULL){
                 return 1;
@@ -169,6 +176,7 @@ int load_to_buffer(FILE* f,node* head){
             if(new_node == NULL){
                 return 1;
             }
+            //initialize values for new line
             current->next = new_node;
             new_node->prev = current;
             current = current->next;
@@ -203,10 +211,10 @@ int editor(node* buffer){
     node* current = buffer;
     int list_length;
     int len;
+    char new_char;
     signal(SIGINT, signal_handler);//Ctrl+C handeling
     while(!Exit){//app logic
         current = go_to(buffer,CURSOR.row + 1);
-        char new_char;
         list_length = display_buffer(buffer);
         printf("Use arrow keys to navigate, Ctrl+C to quit by saving into file, Ctrl+Z to quit without saving.\n");
         // to take char and handle it
@@ -263,9 +271,6 @@ int editor(node* buffer){
                         }
                         break;
                 }
-            }
-            else{
-                continue;
             }
         }
         else if(Exit) break;//to exit and save file on ctrl+C
@@ -379,15 +384,17 @@ int display_buffer(node* head){
 
 int update_buffer(node* head,char new_char){//adding char to buffer
     node* current = go_to(head, CURSOR.row+1);
-    int len;
-    if(CURSOR.column == (len = strlen(current->line))){
-        current->line = (string)realloc(current->line,(len+2)*sizeof(char));
-        if(current->line == NULL){
-            return 1;
-        }
-        *(current->line + len+1) = '\0';
+    int len = strlen(current->line);
+    //increase length of current line for new character
+    current->line = (string)realloc(current->line,(len+2)*sizeof(char));
+    if(current->line == NULL){
+        return 1;
     }
-    *(current->line + CURSOR.column) = new_char;
+    len++;
+    for(int i = len;i >=CURSOR.column; i--){
+        *(current->line + i) = *(current->line + i-1);
+    }
+    *(current->line + CURSOR.column) = new_char;//add new char
     CURSOR.column++;// moving cursor 1 position after character adding
     if(new_char == '\n'){//if Enter pressed add a new line
         int i;
@@ -437,9 +444,6 @@ int update_buffer(node* head,char new_char){//adding char to buffer
 node* go_to(node* head, int line_no){
     node* current = head;
     for(int i = 1; i < line_no; i++){
-        if(current->next == NULL && i == line_no-1){
-            current->next = create_node();
-        }
         current = current->next;
     }
     return current;
@@ -459,8 +463,9 @@ int update_to_file(FILE* f, node* head){
 
 int free_buffer(node* head) {
     node* current = head;
+    node* temp;
     while (current != NULL) {
-        node* temp = current->next;
+        temp = current->next;
         if (current->line != NULL) {
             free(current->line);
         }
