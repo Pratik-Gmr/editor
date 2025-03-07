@@ -164,7 +164,7 @@ int load_to_buffer(FILE* f,node* head){
         }
         // for older line increasing line buffer size if content doesnt fit-in
         else if(line_length +1 >= line_size){
-            line_size += 1;            
+            line_size += 2;            
             current->line = (string)realloc(current->line, line_size);
             if(current->line == NULL){
                 return 1;//error
@@ -291,8 +291,8 @@ int editor(node* buffer){
 }
 
 int delete(node* current){
-    if(strlen(current->line) > CURSOR.column){//for cursor not at end of the line
-        int len = strlen(current->line);
+    int len = strlen(current->line);
+    if(len > CURSOR.column){//for cursor not at end of the line
         for(int i = CURSOR.column; i < len; i++){
             *(current->line + i) = *(current->line + i + 1);
         }
