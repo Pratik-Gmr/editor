@@ -119,7 +119,7 @@ int main(int argc, string argv[]){
     if (return_value != 0){
         exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
         return error(exit_message,return_value);
-    }
+    }signal
     printf("file: %s is updated.\n", file_name);
     return 0;
 }
