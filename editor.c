@@ -19,10 +19,6 @@ char getch() {
     return ch;
 }
 
-// Define macros
-#define True 1
-#define False 0
-
 // defining new data types, global variables, new structures
 typedef char* string;
 typedef struct node{
@@ -52,7 +48,7 @@ int update_to_file(FILE* f, node* head);
 int free_buffer(node* head);
 
 // global variables
-static int Exit = False;
+static bool Exit = false;
 // cursor defination
 static cursor CURSOR = {0,0};
 void print_cursor(char c){
@@ -119,7 +115,8 @@ int main(int argc, string argv[]){
     if (return_value != 0){
         exit_message = "Error: Problem occured during buffer-freeing.\nThere might be memory leaks.\n";
         return error(exit_message,return_value);
-    }signal
+    }
+    signal;
     printf("file: %s is updated.\n", file_name);
     return 0;
 }
@@ -153,7 +150,9 @@ int load_to_buffer(FILE* f,node* head){
     node* current = head;
     int line_length = 0;
     size_t line_size = 1;
+    bool empty_file = true;
     while((c = fgetc(f)) != EOF){
+        empty_file = false;
         // for new line
         if (current->line == NULL){ //initialize the new line if empty
             current->line = (string)malloc(line_size);
@@ -192,10 +191,17 @@ int load_to_buffer(FILE* f,node* head){
     }
     //Removing last empty node if created
     if (current->line == NULL){
-        free(current->line);
-        current = current->prev;
-        free(current->next);
-        current->next = NULL;
+        if (!empty_file){
+            free(current->line);
+            current = current->prev;
+            free(current->next);
+            current->next = NULL;
+        }
+        else{
+            current->line = (string)malloc(1);
+            if(current->line == NULL) return 1;
+            current->line[0] = '\0';
+        }
     }
     return 0;//no error
 }
@@ -204,7 +210,7 @@ void signal_handler(int signum){ //for Ctrl+C to not close the program directly
     system("clear");
     printf(".....Exiting and saving changes......\nPress any key to confirm.\n");
     fflush(stdout);
-    Exit = True;
+    Exit = true;
 }
 
 int editor(node* buffer){
@@ -262,7 +268,7 @@ int editor(node* buffer){
                             }
                         }
                         break;
-                        case '3': //delete key
+                    case '3': //delete key
                         if (getch() == '~') {
                             int return_value = delete(current);
                             if (return_value != 0) {
@@ -340,7 +346,7 @@ int backspace(node* current){
         if (current->next != NULL) {
             current->next->prev = current->prev;
         }
-        
+
         node* old = current;
 
         // Move cursor to previous line
@@ -353,7 +359,7 @@ int backspace(node* current){
         old->line = NULL;
         old->next = NULL;
         old->prev = NULL;
-        free(old);   
+        free(old);
     }
     return 0;
 }
@@ -363,7 +369,7 @@ int display_buffer(node* head){
     node* current = head;
     int length;
     for(length = 0;current != NULL;length++){
-        printf("%d\t",length+1);
+        printf("%5d\t",length+1);
         if (CURSOR.row == length){//add cursor character at cursor position
             for(int i = 0;*(current->line+i) != '\0';i++){//cursor within the line
                 if(CURSOR.column == i)
@@ -408,7 +414,7 @@ int update_buffer(node* head,char new_char){//adding char to buffer
             return 1;
         new->line[0] = '\0';
         //create new line and adjust the line contents(break the line on newline character to 2 separate lines)
-        int found_newline = False;
+        int found_newline = 0;
         int len = strlen(current->line);
         for(i = 0;i <= len; i++){
             if(*(current->line+i) == '\n'){
